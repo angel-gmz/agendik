@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS base
+FROM node:24-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 
 # 1. Install dependencies & generate Prisma Client
@@ -43,9 +43,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
-# Copy Prisma CLI & engines so startup can run `prisma db push`
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
-COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
+# Install standalone Prisma CLI with all its transitive deps (effect, @prisma/config, etc.)
+RUN npm install --prefix /prisma-cli --no-save prisma@6.19.3 && \
+    chown -R nextjs:nodejs /prisma-cli
 
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && \
