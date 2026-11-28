@@ -20,34 +20,44 @@ async function sendEmailRaw(to: string, subject: string, body: string): Promise<
   status: NotificationStatus;
   errorMessage?: string;
 }> {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+  const port = Number(process.env.SMTP_PORT?.trim() || 587);
+  const from = process.env.SMTP_FROM?.trim() || user;
 
   if (!host || !user || !pass) {
+    console.warn(
+      `[email] SIMULATED (missing env vars: host=${Boolean(host)}, user=${Boolean(user)}, pass=${Boolean(pass)}) -> to=${to} subject="${subject}"`
+    );
     return { status: NotificationStatus.SIMULATED };
   }
 
   try {
     const transporter = nodemailer.createTransport({
       host,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: Number(process.env.SMTP_PORT || 587) === 465,
+      port,
+      secure: port === 465,
       auth: { user, pass },
     });
 
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || user,
+      from,
       to,
       subject,
       text: body,
     });
 
+    console.info(`[email] SENT -> to=${to} from=${from} host=${host}:${port} subject="${subject}"`);
     return { status: NotificationStatus.SENT };
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Error enviando email";
+    console.error(
+      `[email] FAILED -> to=${to} from=${from} host=${host}:${port} error="${errorMessage}"`
+    );
     return {
       status: NotificationStatus.FAILED,
-      errorMessage: err instanceof Error ? err.message : "Error enviando email",
+      errorMessage,
     };
   }
 }
