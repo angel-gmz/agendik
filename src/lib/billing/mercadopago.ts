@@ -64,7 +64,7 @@ export async function createMpSubscription(params: {
   const transactionAmount = Number((params.amountCents / 100).toFixed(2));
 
   const payload = {
-    reason: `AgenteIA — Plan ${params.planName} (${params.tenantName})`,
+    reason: `Atendik — Plan ${params.planName} (${params.tenantName})`,
     external_reference: `${params.tenantId}:${params.planCode}`,
     payer_email: params.payerEmail,
     auto_recurring: {
