@@ -68,7 +68,7 @@ export default function DashboardShell({
             <Bot className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold text-slate-900">AgenteIA</div>
+            <div className="truncate text-sm font-bold text-slate-900">Atendik</div>
             <div className="truncate text-[11px] font-medium text-indigo-600">
               Plan {currentTenant.planCode}
             </div>

@@ -1,9 +1,53 @@
-import { ChannelType, Plan } from "@prisma/client";
+import { ChannelType, Plan, SubscriptionStatus } from "@prisma/client";
 import { prisma } from "../prisma";
 
 export interface EntitlementCheck {
   allowed: boolean;
   reason?: string;
+}
+
+export interface SubscriptionAccessStatus {
+  isTrialing: boolean;
+  isTrialExpired: boolean;
+  trialDaysRemaining: number | null;
+  hasActiveAccess: boolean;
+}
+
+export function getSubscriptionAccessStatus(tenant: {
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: Date | null;
+}): SubscriptionAccessStatus {
+  const now = Date.now();
+  const isTrialing = tenant.subscriptionStatus === SubscriptionStatus.TRIALING;
+
+  if (isTrialing) {
+    if (!tenant.trialEndsAt) {
+      return {
+        isTrialing: true,
+        isTrialExpired: false,
+        trialDaysRemaining: 14,
+        hasActiveAccess: true,
+      };
+    }
+    const diffMs = tenant.trialEndsAt.getTime() - now;
+    const isTrialExpired = diffMs <= 0;
+    const trialDaysRemaining = isTrialExpired
+      ? 0
+      : Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+    return {
+      isTrialing: true,
+      isTrialExpired,
+      trialDaysRemaining,
+      hasActiveAccess: !isTrialExpired,
+    };
+  }
+
+  return {
+    isTrialing: false,
+    isTrialExpired: false,
+    trialDaysRemaining: null,
+    hasActiveAccess: tenant.subscriptionStatus === SubscriptionStatus.ACTIVE,
+  };
 }
 
 export async function canActivateChannel(

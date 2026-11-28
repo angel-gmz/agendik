@@ -6,22 +6,24 @@ async function main() {
   const plans = [
     {
       code: "FREE",
-      name: "Starter Free",
-      description: "Ideal para probar el agente de IA con widget web y citas básicas.",
-      priceMonthlyCents: 0,
+      name: "Consultorio",
+      description:
+        "Para consultorios independientes o especialistas que quieren automatizar su agenda.",
+      priceMonthlyCents: 49900,
       currency: "MXN",
-      monthlyMessageLimit: 500,
-      monthlyTokenLimit: 500_000,
+      monthlyMessageLimit: 1500,
+      monthlyTokenLimit: 1_500_000,
       maxChannels: 2,
-      maxKnowledgeDocs: 5,
-      maxTeamMembers: 1,
+      maxKnowledgeDocs: 15,
+      maxTeamMembers: 2,
       allowByok: false,
       allowGoogleCalendar: true,
     },
     {
       code: "PRO",
-      name: "Pro Omnicanal",
-      description: "Para negocios en crecimiento con WhatsApp, Instagram, Messenger y BYOK.",
+      name: "Clínica Pro",
+      description:
+        "Para clínicas y spas en crecimiento que atienden por WhatsApp, Instagram y Messenger.",
       priceMonthlyCents: 79900,
       currency: "MXN",
       monthlyMessageLimit: 5000,
@@ -34,8 +36,9 @@ async function main() {
     },
     {
       code: "ENTERPRISE",
-      name: "Enterprise",
-      description: "Alto volumen, dominios personalizados y soporte dedicado.",
+      name: "Red y Agencias",
+      description:
+        "Para grupos médicos, cadenas de spas o agencias con alto volumen y marca propia.",
       priceMonthlyCents: 299900,
       currency: "MXN",
       monthlyMessageLimit: 50000,
@@ -49,14 +52,17 @@ async function main() {
   ];
 
   for (const plan of plans) {
+    const { code, ...planData } = plan;
     await prisma.plan.upsert({
-      where: { code: plan.code },
-      update: {},
+      where: { code },
+      update: planData,
       create: plan,
     });
   }
 
-  console.log("[seed-plans] Base SaaS plans ensured (FREE, PRO, ENTERPRISE).");
+  console.log(
+    "[seed-plans] Plans synchronized: Consultorio ($499), Clínica Pro ($799), Red y Agencias ($2,999 MXN)."
+  );
 }
 
 main()

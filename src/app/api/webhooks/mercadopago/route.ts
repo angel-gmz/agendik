@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PlanCode, SubscriptionStatus } from "@prisma/client";
+import { SubscriptionStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { sendTransactionalEmail } from "@/lib/notifications";
 import {
   getMpAuthorizedPayment,
   getMpSubscription,
@@ -62,10 +63,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true, ignored: "external_reference inválido" });
       }
 
-      const [tenant, targetPlan, freePlan] = await Promise.all([
+      const [tenant, targetPlan] = await Promise.all([
         prisma.tenant.findUnique({ where: { id: parsedRef.tenantId } }),
         prisma.plan.findUnique({ where: { code: parsedRef.planCode } }),
-        prisma.plan.findUnique({ where: { code: PlanCode.FREE } }),
       ]);
 
       if (!tenant || !targetPlan) {
@@ -79,17 +79,15 @@ export async function POST(request: NextRequest) {
         ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         : null;
 
-      const effectivePlan =
-        mappedStatus === SubscriptionStatus.CANCELED && freePlan ? freePlan : targetPlan;
-
       await prisma.tenant.update({
         where: { id: tenant.id },
         data: {
-          planId: effectivePlan.id,
+          planId: targetPlan.id,
           mpPreapprovalId: preapproval.id,
           mpPayerEmail: preapproval.payer_email || tenant.mpPayerEmail,
           subscriptionStatus: mappedStatus,
           currentPeriodEnd: nextPeriodEnd,
+          ...(mappedStatus === SubscriptionStatus.ACTIVE ? { trialEndsAt: null } : {}),
         },
       });
 
@@ -102,9 +100,9 @@ export async function POST(request: NextRequest) {
               ? `MP_PAYMENT_${(authorizedPaymentStatus || preapproval.status).toUpperCase()}`
               : `MP_${preapproval.status.toUpperCase()}`,
           externalId: dataId,
-          planCode: effectivePlan.code,
+          planCode: targetPlan.code,
           amountCents: Math.round((preapproval.auto_recurring?.transaction_amount ?? 0) * 100),
-          currency: preapproval.auto_recurring?.currency_id || effectivePlan.currency,
+          currency: preapproval.auto_recurring?.currency_id || targetPlan.currency,
           status: "PROCESSED",
           metadataJson: {
             topic,
@@ -114,6 +112,29 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+
+      // Notify tenant owner by email on subscription activation or cancellation (non-blocking)
+      const notifyEmail = preapproval.payer_email || tenant.mpPayerEmail || tenant.email;
+      if (notifyEmail) {
+        try {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+          if (mappedStatus === SubscriptionStatus.ACTIVE) {
+            await sendTransactionalEmail(
+              notifyEmail,
+              `Tu plan ${targetPlan.name} en Atendik ya está activo`,
+              `Hola,\n\nConfirmamos la activación de tu plan ${targetPlan.name} ($${(targetPlan.priceMonthlyCents / 100).toLocaleString("es-MX")} ${targetPlan.currency}/mes) para "${tenant.name}".\n\nPuedes administrar tu facturación aquí: ${appUrl}/dashboard/${tenant.slug}/billing`
+            );
+          } else if (mappedStatus === SubscriptionStatus.CANCELED) {
+            await sendTransactionalEmail(
+              notifyEmail,
+              `Tu suscripción en Atendik fue cancelada — ${tenant.name}`,
+              `Hola,\n\nConfirmamos la cancelación de la suscripción de "${tenant.name}" en Atendik. Puedes reactivar cualquier plan cuando quieras desde tu panel: ${appUrl}/dashboard/${tenant.slug}/billing`
+            );
+          }
+        } catch {
+          // Non-fatal if email delivery fails
+        }
+      }
     }
 
     return NextResponse.json({ ok: true });

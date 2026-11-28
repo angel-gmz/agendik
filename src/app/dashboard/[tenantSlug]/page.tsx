@@ -44,6 +44,14 @@ interface OverviewData {
     totalTokens: number;
     appointmentsCreated: number;
   };
+  subscription?: {
+    status: string;
+    trialEndsAt: string | null;
+    isTrialing: boolean;
+    isTrialExpired: boolean;
+    trialDaysRemaining: number | null;
+    hasActiveAccess: boolean;
+  };
   onboarding?: {
     hasProfile: boolean;
     hasKnowledge: boolean;
@@ -115,6 +123,46 @@ export default function DashboardOverviewPage() {
           </Link>
         </div>
       </div>
+
+      {/* Trial / Subscription Banner */}
+      {data.subscription?.isTrialing && !data.subscription.isTrialExpired && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-3.5 text-sm text-indigo-950">
+          <div>
+            <span className="font-semibold">
+              Prueba gratis activa: te quedan {data.subscription.trialDaysRemaining ?? 14} días con
+              acceso completo.
+            </span>{" "}
+            <span className="text-indigo-800">
+              Elige un plan antes de que termine para no interrumpir tu recepcionista.
+            </span>
+          </div>
+          <Link
+            href={`/dashboard/${tenantSlug}/billing`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+          >
+            Elegir plan <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      )}
+
+      {data.subscription && !data.subscription.hasActiveAccess && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-3.5 text-sm text-red-900">
+          <div>
+            <span className="font-semibold">
+              {data.subscription.isTrialExpired
+                ? "Tu prueba gratis de 14 días ha finalizado."
+                : "Tu suscripción no está activa."}
+            </span>{" "}
+            Activa un plan para seguir atendiendo pacientes 24/7.
+          </div>
+          <Link
+            href={`/dashboard/${tenantSlug}/billing`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-red-700"
+          >
+            Reactivar plan <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* Onboarding Checklist */}
       {data.onboarding && (() => {

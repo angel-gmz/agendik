@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AuthError, requireTenantAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTenantUsageSummary } from "@/lib/usage";
+import { getSubscriptionAccessStatus } from "@/lib/billing/entitlements";
 import { AppointmentStatus, ConversationStatus } from "@prisma/client";
 
 export async function GET(
@@ -72,6 +73,8 @@ export async function GET(
           )
         : 100;
 
+    const access = getSubscriptionAccessStatus(tenant);
+
     return NextResponse.json({
       tenant: {
         id: tenant.id,
@@ -80,6 +83,11 @@ export async function GET(
         timezone: tenant.timezone,
         primaryColor: tenant.primaryColor,
         plan: tenant.plan,
+      },
+      subscription: {
+        status: tenant.subscriptionStatus,
+        trialEndsAt: tenant.trialEndsAt,
+        ...access,
       },
       kpis: {
         totalConversations,

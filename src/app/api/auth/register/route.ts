@@ -101,8 +101,8 @@ export async function POST(request: NextRequest) {
       const verifyUrl = `${origin}/login?verifyToken=${verifyToken}`;
       await sendTransactionalEmail(
         user.email,
-        `Bienvenido a AgenteIA — ${tenant.name}`,
-        `Hola ${user.name},\n\nTu workspace "${tenant.name}" ya está listo.\nConfirma tu correo electrónico aquí: ${verifyUrl}\n\nPanel de control: ${origin}/dashboard/${tenant.slug}`
+        `Bienvenido a Atendik — ${tenant.name}`,
+        `Hola ${user.name},\n\nTu prueba gratis de 14 días para "${tenant.name}" ya está activa con acceso completo.\nConfirma tu correo electrónico aquí: ${verifyUrl}\n\nPanel de control: ${origin}/dashboard/${tenant.slug}`
       );
     } catch {
       // Non-fatal if email delivery fails

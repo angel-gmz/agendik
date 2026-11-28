@@ -7,24 +7,34 @@ async function main() {
   console.log("Seeding database...");
 
   // 1. Plans
-  const freePlan = await prisma.plan.upsert({
+  const consultorioPlan = await prisma.plan.upsert({
     where: { code: PlanCode.FREE },
     update: {
+      name: "Consultorio",
+      description:
+        "Para consultorios independientes o especialistas que quieren automatizar su agenda.",
       currency: "MXN",
-      priceMonthlyCents: 0,
-      maxTeamMembers: 1,
+      priceMonthlyCents: 49900,
+      monthlyMessageLimit: 1500,
+      monthlyTokenLimit: 1_500_000,
+      maxChannels: 2,
+      maxKnowledgeDocs: 15,
+      maxTeamMembers: 2,
+      allowByok: false,
+      allowGoogleCalendar: true,
     },
     create: {
       code: PlanCode.FREE,
-      name: "Starter Free",
-      description: "Ideal para probar el agente de IA con widget web y citas básicas.",
-      priceMonthlyCents: 0,
+      name: "Consultorio",
+      description:
+        "Para consultorios independientes o especialistas que quieren automatizar su agenda.",
+      priceMonthlyCents: 49900,
       currency: "MXN",
-      monthlyMessageLimit: 500,
-      monthlyTokenLimit: 500_000,
+      monthlyMessageLimit: 1500,
+      monthlyTokenLimit: 1_500_000,
       maxChannels: 2,
-      maxKnowledgeDocs: 5,
-      maxTeamMembers: 1,
+      maxKnowledgeDocs: 15,
+      maxTeamMembers: 2,
       allowByok: false,
       allowGoogleCalendar: true,
     },
@@ -33,14 +43,24 @@ async function main() {
   const proPlan = await prisma.plan.upsert({
     where: { code: PlanCode.PRO },
     update: {
+      name: "Clínica Pro",
+      description:
+        "Para clínicas y spas en crecimiento que atienden por WhatsApp, Instagram y Messenger.",
       currency: "MXN",
       priceMonthlyCents: 79900,
+      monthlyMessageLimit: 5000,
+      monthlyTokenLimit: 5_000_000,
+      maxChannels: 4,
+      maxKnowledgeDocs: 50,
       maxTeamMembers: 5,
+      allowByok: true,
+      allowGoogleCalendar: true,
     },
     create: {
       code: PlanCode.PRO,
-      name: "Pro Omnicanal",
-      description: "Para negocios en crecimiento con WhatsApp, Instagram, Messenger y BYOK.",
+      name: "Clínica Pro",
+      description:
+        "Para clínicas y spas en crecimiento que atienden por WhatsApp, Instagram y Messenger.",
       priceMonthlyCents: 79900,
       currency: "MXN",
       monthlyMessageLimit: 5000,
@@ -56,14 +76,24 @@ async function main() {
   await prisma.plan.upsert({
     where: { code: PlanCode.ENTERPRISE },
     update: {
+      name: "Red y Agencias",
+      description:
+        "Para grupos médicos, cadenas de spas o agencias con alto volumen y marca propia.",
       currency: "MXN",
       priceMonthlyCents: 299900,
+      monthlyMessageLimit: 50000,
+      monthlyTokenLimit: 50_000_000,
+      maxChannels: 10,
+      maxKnowledgeDocs: 500,
       maxTeamMembers: 25,
+      allowByok: true,
+      allowGoogleCalendar: true,
     },
     create: {
       code: PlanCode.ENTERPRISE,
-      name: "Enterprise",
-      description: "Alto volumen, dominios personalizados y soporte dedicado.",
+      name: "Red y Agencias",
+      description:
+        "Para grupos médicos, cadenas de spas o agencias con alto volumen y marca propia.",
       priceMonthlyCents: 299900,
       currency: "MXN",
       monthlyMessageLimit: 50000,
@@ -366,7 +396,7 @@ async function main() {
 
   console.log("Seed completed successfully!");
   console.log(`Demo login: admin@agenteia.local / admin1234`);
-  console.log(`Demo tenant slug: clinica-demo (Free plan id: ${freePlan.id})`);
+  console.log(`Demo tenant slug: clinica-demo (Consultorio plan id: ${consultorioPlan.id})`);
 }
 
 main()

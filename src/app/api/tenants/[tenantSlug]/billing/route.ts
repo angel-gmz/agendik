@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { AuthError, requireTenantAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTenantUsageSummary } from "@/lib/usage";
-import { getTenantResourceCounts } from "@/lib/billing/entitlements";
+import {
+  getSubscriptionAccessStatus,
+  getTenantResourceCounts,
+} from "@/lib/billing/entitlements";
 import { isMercadoPagoConfigured } from "@/lib/billing/mercadopago";
 
 export async function GET(
@@ -24,6 +27,8 @@ export async function GET(
       }),
     ]);
 
+    const access = getSubscriptionAccessStatus(tenant);
+
     return NextResponse.json({
       mpConfigured: isMercadoPagoConfigured(),
       subscription: {
@@ -32,6 +37,7 @@ export async function GET(
         mpPayerEmail: tenant.mpPayerEmail,
         currentPeriodEnd: tenant.currentPeriodEnd,
         trialEndsAt: tenant.trialEndsAt,
+        ...access,
       },
       currentPlan: tenant.plan,
       usage: {

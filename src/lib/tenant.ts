@@ -1,7 +1,9 @@
 import { prisma } from "./prisma";
-import { ChannelType, PlanCode, TenantRole } from "@prisma/client";
+import { ChannelType, PlanCode, SubscriptionStatus, TenantRole } from "@prisma/client";
 import crypto from "crypto";
 import { INDUSTRY_TEMPLATES } from "./templates/industries";
+
+export const TRIAL_DURATION_DAYS = 14;
 
 export function slugifyTenant(input: string): string {
   return input
@@ -60,18 +62,25 @@ export async function createTenantWithDefaults(params: {
   }
 
   let plan = await prisma.plan.findUnique({
-    where: { code: params.planCode ?? PlanCode.FREE },
+    where: { code: params.planCode ?? PlanCode.PRO },
   });
 
   if (!plan) {
     plan = await prisma.plan.create({
       data: {
-        code: PlanCode.FREE,
-        name: "Starter Free",
-        monthlyMessageLimit: 500,
-        monthlyTokenLimit: 500_000,
-        maxChannels: 2,
-        maxKnowledgeDocs: 5,
+        code: PlanCode.PRO,
+        name: "Clínica Pro",
+        description:
+          "Para clínicas y spas en crecimiento que atienden por WhatsApp, Instagram y Messenger.",
+        priceMonthlyCents: 79900,
+        currency: "MXN",
+        monthlyMessageLimit: 5000,
+        monthlyTokenLimit: 5_000_000,
+        maxChannels: 4,
+        maxKnowledgeDocs: 50,
+        maxTeamMembers: 5,
+        allowByok: true,
+        allowGoogleCalendar: true,
       },
     });
   }
@@ -79,6 +88,7 @@ export async function createTenantWithDefaults(params: {
   const template = params.industry ? INDUSTRY_TEMPLATES[params.industry] : undefined;
   const verifyToken = crypto.randomBytes(16).toString("hex");
   const cleanName = params.name.trim();
+  const trialEndsAt = new Date(Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
   const tenant = await prisma.tenant.create({
     data: {
@@ -89,6 +99,8 @@ export async function createTenantWithDefaults(params: {
       timezone: params.timezone || "America/Mexico_City",
       email: params.email,
       planId: plan.id,
+      subscriptionStatus: SubscriptionStatus.TRIALING,
+      trialEndsAt,
       memberships: {
         create: {
           userId: params.ownerUserId,

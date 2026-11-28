@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Receipt,
   XCircle,
+  Clock,
 } from "lucide-react";
 
 interface PlanItem {
@@ -48,6 +49,11 @@ interface BillingData {
     mpPreapprovalId: string | null;
     mpPayerEmail: string | null;
     currentPeriodEnd: string | null;
+    trialEndsAt: string | null;
+    isTrialing: boolean;
+    isTrialExpired: boolean;
+    trialDaysRemaining: number | null;
+    hasActiveAccess: boolean;
   };
   currentPlan: PlanItem;
   usage: {
@@ -66,6 +72,37 @@ interface BillingData {
 function formatPrice(cents: number, currency = "MXN") {
   if (cents === 0) return "Gratis";
   return `$${(cents / 100).toLocaleString("es-MX")} ${currency}/mes`;
+}
+
+function getStatusBadge(sub: BillingData["subscription"]) {
+  if (sub.isTrialing && !sub.isTrialExpired) {
+    return {
+      label: `Prueba gratis (${sub.trialDaysRemaining ?? 14}d restantes)`,
+      className: "bg-indigo-100 text-indigo-700",
+    };
+  }
+  if (sub.isTrialExpired) {
+    return {
+      label: "Prueba finalizada",
+      className: "bg-red-100 text-red-700",
+    };
+  }
+  if (sub.status === "ACTIVE") {
+    return {
+      label: "Activa",
+      className: "bg-emerald-100 text-emerald-700",
+    };
+  }
+  if (sub.status === "CANCELED") {
+    return {
+      label: "Cancelada",
+      className: "bg-slate-200 text-slate-700",
+    };
+  }
+  return {
+    label: sub.status,
+    className: "bg-amber-100 text-amber-800",
+  };
 }
 
 export default function BillingPage() {
@@ -133,7 +170,11 @@ export default function BillingPage() {
   }
 
   async function handleCancelSubscription() {
-    if (!confirm("¿Seguro que deseas cancelar tu suscripción y volver al plan Starter Free?")) {
+    if (
+      !confirm(
+        "¿Seguro que deseas cancelar tu suscripción? Podrás reactivar cualquier plan cuando quieras."
+      )
+    ) {
       return;
     }
     setCanceling(true);
@@ -167,6 +208,8 @@ export default function BillingPage() {
       ? window.location.origin
       : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
+  const statusBadge = getStatusBadge(data.subscription);
+
   const meters = [
     {
       label: "Mensajes este mes",
@@ -181,7 +224,7 @@ export default function BillingPage() {
       color: "bg-emerald-500",
     },
     {
-      label: "Documentos RAG",
+      label: "Documentos de conocimiento",
       used: data.usage.knowledgeDocs,
       limit: data.currentPlan.maxKnowledgeDocs,
       color: "bg-sky-500",
@@ -200,14 +243,55 @@ export default function BillingPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Plan y Facturación</h1>
           <p className="text-sm text-slate-500">
-            Administra tu suscripción recurrente con Mercado Pago y revisa tus cuotas mensuales
+            Administra tu prueba gratis o suscripción con Mercado Pago y revisa tus cuotas mensuales
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3.5 py-1.5 text-xs font-semibold text-sky-800">
           <ShieldCheck className="h-4 w-4 text-sky-600" />
-          Pagos procesados con Mercado Pago
+          Pagos en MXN con Mercado Pago
         </div>
       </div>
+
+      {/* Trial / Expiration Banner */}
+      {data.subscription.isTrialing && !data.subscription.isTrialExpired && (
+        <div className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3.5 text-xs text-indigo-900">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+          <div>
+            <strong>
+              Prueba gratis activa: te quedan {data.subscription.trialDaysRemaining ?? 14} días con
+              acceso completo.
+            </strong>{" "}
+            {data.subscription.trialEndsAt && (
+              <>
+                Tu periodo de prueba finaliza el{" "}
+                <strong>
+                  {new Date(data.subscription.trialEndsAt).toLocaleDateString("es-MX", {
+                    dateStyle: "medium",
+                  })}
+                </strong>
+                .{" "}
+              </>
+            )}
+            Elige cualquiera de los planes de abajo antes de esa fecha para mantener activo a tu
+            recepcionista sin interrupciones.
+          </div>
+        </div>
+      )}
+
+      {!data.subscription.hasActiveAccess && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-xs text-red-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <div>
+            <strong>
+              {data.subscription.isTrialExpired
+                ? "Tu prueba gratis de 14 días ha finalizado."
+                : "Tu suscripción no está activa."}
+            </strong>{" "}
+            Selecciona un plan abajo para reactivar tu recepcionista con IA y seguir agendando
+            citas en Google Calendar.
+          </div>
+        </div>
+      )}
 
       {!data.mpConfigured && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
@@ -245,8 +329,10 @@ export default function BillingPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-slate-900">{data.currentPlan.name}</h2>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                  {data.subscription.status}
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${statusBadge.className}`}
+                >
+                  {statusBadge.label}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -264,7 +350,7 @@ export default function BillingPage() {
             </div>
           </div>
 
-          {data.currentPlan.code !== "FREE" && (
+          {data.subscription.status === "ACTIVE" && (
             <button
               type="button"
               onClick={handleCancelSubscription}
@@ -311,7 +397,7 @@ export default function BillingPage() {
             type="email"
             value={payerEmail}
             onChange={(e) => setPayerEmail(e.target.value)}
-            placeholder="tu-correo@negocio.com"
+            placeholder="tu-correo@clinica.mx"
             className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
           />
           <p className="mt-1 text-[11px] text-slate-500">
@@ -323,7 +409,8 @@ export default function BillingPage() {
       {/* Plans Catalog */}
       <div className="grid gap-5 lg:grid-cols-3">
         {data.plans.map((plan) => {
-          const isCurrent = plan.code === data.currentPlan.code;
+          const isCurrentActive =
+            plan.code === data.currentPlan.code && data.subscription.status === "ACTIVE";
           const isPro = plan.code === "PRO";
           return (
             <div
@@ -338,7 +425,7 @@ export default function BillingPage() {
                 <h3 className="text-base font-bold text-slate-900">{plan.name}</h3>
                 {isPro && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-indigo-600 px-2.5 py-0.5 text-[10px] font-bold text-white">
-                    <Sparkles className="h-3 w-3" /> Popular
+                    <Sparkles className="h-3 w-3" /> Más popular
                   </span>
                 )}
               </div>
@@ -354,36 +441,36 @@ export default function BillingPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-emerald-600" />
-                  {(plan.monthlyTokenLimit / 1_000_000).toFixed(1)}M tokens IA/mes
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-600" />
                   Hasta {plan.maxChannels} canales activos
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-emerald-600" />
-                  Hasta {plan.maxKnowledgeDocs} documentos RAG
+                  Hasta {plan.maxKnowledgeDocs} documentos + FAQs
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-emerald-600" />
-                  Hasta {plan.maxTeamMembers} miembros de equipo
+                  Hasta {plan.maxTeamMembers} personas en tu equipo
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-emerald-600" />
+                  Sincronización con Google Calendar
                 </li>
                 <li className="flex items-center gap-2">
                   <Check
                     className={`h-4 w-4 ${plan.allowByok ? "text-emerald-600" : "text-slate-300"}`}
                   />
                   <span className={plan.allowByok ? "" : "text-slate-400 line-through"}>
-                    BYOK (Tu propia API Key)
+                    Tu propia API Key (OpenAI o Gemini)
                   </span>
                 </li>
               </ul>
 
               <button
                 type="button"
-                disabled={isCurrent || busyPlan !== null}
+                disabled={isCurrentActive || busyPlan !== null}
                 onClick={() => handleSelectPlan(plan.code)}
                 className={`mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
-                  isCurrent
+                  isCurrentActive
                     ? "cursor-default border border-slate-200 bg-slate-100 text-slate-500"
                     : isPro
                     ? "bg-indigo-600 text-white hover:bg-indigo-700"
@@ -394,10 +481,8 @@ export default function BillingPage() {
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Procesando...
                   </>
-                ) : isCurrent ? (
-                  "Plan actual"
-                ) : plan.code === "FREE" ? (
-                  "Cambiar a Starter Free"
+                ) : isCurrentActive ? (
+                  "Plan activo"
                 ) : data.mpConfigured ? (
                   <>
                     Suscribirme con Mercado Pago <ExternalLink className="h-3.5 w-3.5" />

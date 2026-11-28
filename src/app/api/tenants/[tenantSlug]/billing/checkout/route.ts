@@ -32,8 +32,8 @@ export async function POST(
       return NextResponse.json({ error: "Ya cuentas con este plan activo." }, { status: 400 });
     }
 
-    // Downgrade to FREE directly
-    if (targetPlan.code === PlanCode.FREE || targetPlan.priceMonthlyCents === 0) {
+    // Free plan (only if priceMonthlyCents === 0)
+    if (targetPlan.priceMonthlyCents === 0) {
       if (tenant.mpPreapprovalId && isMercadoPagoConfigured()) {
         try {
           await cancelMpSubscription(tenant.mpPreapprovalId);
@@ -49,6 +49,7 @@ export async function POST(
           mpPreapprovalId: null,
           subscriptionStatus: SubscriptionStatus.ACTIVE,
           currentPeriodEnd: null,
+          trialEndsAt: null,
         },
       });
 
@@ -56,8 +57,8 @@ export async function POST(
         data: {
           tenantId: tenant.id,
           provider: isMercadoPagoConfigured() ? "MERCADOPAGO" : "SIMULATOR",
-          eventType: "PLAN_DOWNGRADED_FREE",
-          planCode: PlanCode.FREE,
+          eventType: "PLAN_UPDATED_DIRECT",
+          planCode: targetPlan.code,
           amountCents: 0,
           currency: targetPlan.currency,
           status: "PROCESSED",
@@ -68,7 +69,7 @@ export async function POST(
         ok: true,
         mode: "DIRECT",
         planCode: targetPlan.code,
-        message: "Tu workspace cambió al plan Starter Free.",
+        message: `Tu workspace cambió al plan ${targetPlan.name}.`,
       });
     }
 
@@ -143,6 +144,7 @@ export async function POST(
         mpPreapprovalId: simId,
         subscriptionStatus: SubscriptionStatus.ACTIVE,
         currentPeriodEnd: nextMonth,
+        trialEndsAt: null,
       },
     });
 

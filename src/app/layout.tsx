@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AgenteIA — Plataforma Multi-Tenant de Agentes IA para FAQs y Citas",
+  title: "Atendik | Recepcionista con IA para clínicas, consultorios y spas en México",
   description:
-    "Crea tu agente de IA omnicanal con base de conocimiento RAG, agendamiento de citas, Google Calendar y traspaso a humanos.",
+    "Responde dudas frecuentes y agenda citas 24/7 en Google Calendar por WhatsApp, Instagram, Messenger y tu sitio web. Empieza gratis en MXN.",
 };
 
 export default function RootLayout({
